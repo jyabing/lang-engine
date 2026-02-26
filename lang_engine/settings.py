@@ -7,11 +7,10 @@ import dj_database_url
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
+SECRET_KEY = os.environ.get("SECRET_KEY")
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SSECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key")
+if not SECRET_KEY:
+    raise Exception("SECRET_KEY not found in environment variables")
 
 DEBUG = os.environ.get("DEBUG", "False") == "True"
 
@@ -69,8 +68,6 @@ DATABASES = {
     )
 }
 
-# Password validation
-# https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
     {
