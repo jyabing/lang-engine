@@ -1,0 +1,13 @@
+<h2>错题本</h2>
+
+{% for s in states %}
+<div style="border:1px solid #ddd;margin:10px;padding:10px">
+  <b>{{ s.item.text_zh }}</b><br>
+  EN: {{ s.item.text_en }}<br>
+  JP: {{ s.item.text_jp }}<br>
+  错误次数: {{ s.error_count }}
+  <a href="/train/?item={{ s.item.id }}">去训练</a>
+</div>
+{% empty %}
+<p>没有错题 🎉</p>
+{% endfor %}

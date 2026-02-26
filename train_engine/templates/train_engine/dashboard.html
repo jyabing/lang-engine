@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{font-family:Arial;padding:20px;background:#f5f6fa}
+.card{background:white;border-radius:10px;padding:20px;margin:10px;box-shadow:0 2px 6px rgba(0,0,0,0.08)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.big{font-size:32px;font-weight:bold}
+</style>
+</head>
+
+<body>
+
+<h2>学习数据面板</h2>
+
+<div class="grid">
+
+<div class="card">
+<h3>今日训练次数</h3>
+<div class="big">{{ today_count }}</div>
+</div>
+
+<div class="card">
+<h3>总正确率</h3>
+<div class="big">{{ accuracy }}%</div>
+</div>
+
+<div class="card">
+<h3>连续学习天数</h3>
+<div class="big">{{ streak }}</div>
+</div>
+
+</div>
+
+<div class="card">
+<h3>Memory Level 分布</h3>
+<canvas id="levelChart"></canvas>
+</div>
+
+<div class="card">
+<h3>最近7天训练量</h3>
+<canvas id="trendChart"></canvas>
+</div>
+
+<script>
+let levelData = {{ level_stats|safe }};
+let labels = levelData.map(x=>"Lv"+x.memory_level);
+let data = levelData.map(x=>x.count);
+
+new Chart(document.getElementById("levelChart"),{
+    type:"bar",
+    data:{labels:labels,datasets:[{label:"数量",data:data}]}
+})
+
+let days={{ days|safe }};
+let counts={{ counts|safe }};
+
+new Chart(document.getElementById("trendChart"),{
+    type:"line",
+    data:{labels:days,datasets:[{label:"训练次数",data:counts}]}
+})
+</script>
+
+</body>
+</html>

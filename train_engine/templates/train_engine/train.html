@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Train Engine</title>
+
+<!-- PWA -->
+<link rel="manifest" href="/static/train_engine/manifest.json">
+<meta name="theme-color" content="#111111">
+
+<style>
+body{font-family:Arial;padding:20px}
+.desktop{display:block}
+.mobile{display:none}
+@media(max-width:768px){.desktop{display:none}.mobile{display:block}}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{border:1px solid #ddd;padding:10px;vertical-align:top}
+.card{border:1px solid #ddd;padding:12px;margin:10px 0;border-radius:8px}
+.correct{color:green}
+.wrong{color:red}
+button{margin:5px}
+input{padding:6px;width:60%}
+.small{font-size:12px;color:#666}
+</style>
+</head>
+
+<body>
+
+<h2>Train Engine</h2>
+
+<div class="small">
+  <a href="/dashboard/">Dashboard</a> |
+  <a href="/accounts/logout/">Logout</a>
+</div>
+
+<div>
+模式：
+<button onclick="setMode('normal')">标准</button>
+<button onclick="setMode('choice')">选择题</button>
+<button onclick="setMode('dictation')">听写</button>
+<button onclick="loadNext()">下一题</button>
+</div>
+
+<div id="tasks"></div>
+
+<script>
+/* -------------------------
+PWA Service Worker
+------------------------- */
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/static/train_engine/sw.js");
+}
+
+/* -------------------------
+TTS
+------------------------- */
+function speakText(text, lang){
+  let u=new SpeechSynthesisUtterance(text);
+  if(lang==="jp") u.lang="ja-JP";
+  else if(lang==="kr") u.lang="ko-KR";
+  else u.lang="en-US";
+  speechSynthesis.speak(u);
+}
+
+/* -------------------------
+音频播放：优先真人音频（audio_url），没有就TTS
+------------------------- */
+function playAudioOrTTS(task){
+  const lang = detectLang(task.type);
+  if(task.audio_url){
+    const audio = new Audio(task.audio_url);
+    audio.play();
+    return;
+  }
+  // fallback: TTS用「answer」或「text」
+  const text = task.answer || task.text || task.prompt || task.question || "";
+  speakText(text.replace("_____",""), lang);
+}
+
+/* -------------------------
+Speech Recognition
+------------------------- */
+let recognition=null;
+if('webkitSpeechRecognition' in window){ recognition=new webkitSpeechRecognition(); }
+else if('SpeechRecognition' in window){ recognition=new SpeechRecognition(); }
+if(recognition){ recognition.continuous=false; recognition.interimResults=false; }
+
+function startVoiceInput(type){
+  if(!recognition){ alert("浏览器不支持语音输入（建议Chrome/Edge）"); return; }
+  if(type.includes("jp")) recognition.lang="ja-JP";
+  else if(type.includes("kr")) recognition.lang="ko-KR";
+  else recognition.lang="en-US";
+
+  recognition.onresult=function(e){
+    document.getElementById("input_"+type).value=e.results[0][0].transcript;
+  };
+  recognition.start();
+}
+
+/* -------------------------
+全局状态
+------------------------- */
+let currentItemId=null;
+let currentMode="normal";
+
+function setMode(m){ currentMode=m; loadNext(); }
+
+function loadNext(){
+  fetch("/api/train/next")
+  .then(r=>r.json())
+  .then(d=>{
+    if(d.error){ alert(d.error); return; }
+    currentItemId=d.item_id;
+    renderTasks(d.tasks, d.memory_level);
+  });
+}
+
+/* -------------------------
+工具
+------------------------- */
+function shuffle(arr){ return arr.sort(()=>Math.random()-0.5); }
+function detectLang(type){
+  if(type.includes("_jp")) return "jp";
+  if(type.includes("_kr")) return "kr";
+  return "en";
+}
+
+/* -------------------------
+选择题选项：数据库干扰项
+------------------------- */
+function generateOptions(task){
+  let opts=[task.answer];
+  if(task.distractors){ opts=opts.concat(task.distractors); }
+  return shuffle(opts).slice(0,4);
+}
+
+function selectOption(type,val){
+  document.getElementById("input_"+type).value=val;
+  submitAnswer(type);
+}
+
+/* -------------------------
+渲染
+------------------------- */
+function renderTasks(tasks, memoryLevel){
+  let container=document.getElementById("tasks");
+  container.innerHTML="";
+
+  let table=document.createElement("table");
+  table.className="desktop";
+  table.innerHTML="<tr><th>Task</th><th>UI</th></tr>";
+
+  let mobile=document.createElement("div");
+  mobile.className="mobile";
+
+  tasks.forEach(t=>{
+    let html="";
+    const lang=detectLang(t.type);
+
+    // ===== 标准模式 =====
+    if(currentMode==="normal"){
+      if(t.type.startsWith("tell_")){
+        html+=`<b>Tell:</b> ${t.prompt}
+          <button onclick='playAudioOrTTS(${JSON.stringify(t)})'>🔊</button><br>`;
+      }else if(t.type.includes("cloze")){
+        html+=`<b>Cloze:</b> ${t.text}
+          <button onclick='playAudioOrTTS(${JSON.stringify(t)})'>🔊</button><br>`;
+        if(t.hint){ html+=`<div class="small">Hint: ${t.hint}</div>`; }
+      }
+
+      html+=`<input id="input_${t.type}" placeholder="输入答案">
+        <button onclick="startVoiceInput('${t.type}')">🎤</button>
+        <button onclick="submitAnswer('${t.type}')">提交</button>
+        <div id="result_${t.type}"></div>`;
+    }
+
+    // ===== 选择题模式 =====
+    if(currentMode==="choice"){
+      const ops=generateOptions(t);
+      html+=`<b>选择正确答案：</b>
+        <button onclick='playAudioOrTTS(${JSON.stringify(t)})'>🔊</button><br>`;
+      ops.forEach(o=>{
+        html+=`<button onclick="selectOption('${t.type}','${o.replaceAll("'","&#039;")}')">${o}</button><br>`;
+      });
+      html+=`<input type="hidden" id="input_${t.type}">
+        <div id="result_${t.type}"></div>`;
+    }
+
+    // ===== 听写模式（盲听）=====
+    if(currentMode==="dictation"){
+      html+=`<b>听写模式</b><br>
+        <button onclick='playAudioOrTTS(${JSON.stringify(t)})'>🔊 播放</button><br>
+        <div class="small">（不显示原句，听完再输入/口述）</div>
+        <input id="input_${t.type}" placeholder="听写输入">
+        <button onclick="startVoiceInput('${t.type}')">🎤</button>
+        <button onclick="submitAnswer('${t.type}')">提交</button>
+        <div id="result_${t.type}"></div>`;
+    }
+
+    // desktop
+    let tr=document.createElement("tr");
+    tr.innerHTML=`<td>${t.type}<div class="small">Lv ${memoryLevel}</div></td><td>${html}</td>`;
+    table.appendChild(tr);
+
+    // mobile
+    let card=document.createElement("div");
+    card.className="card";
+    card.innerHTML=`<b>${t.type}</b><div class="small">Lv ${memoryLevel}</div><br>${html}`;
+    mobile.appendChild(card);
+  });
+
+  container.appendChild(table);
+  container.appendChild(mobile);
+}
+
+/* -------------------------
+提交
+------------------------- */
+function submitAnswer(type){
+  let val=document.getElementById("input_"+type).value;
+
+  fetch("/api/train/answer",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({ item_id:currentItemId, task_type:type, answer:val })
+  })
+  .then(r=>r.json())
+  .then(res=>{
+    let el=document.getElementById("result_"+type);
+    if(res.correct){
+      el.innerHTML=`<span class="correct">✔ 正确 Lv.${res.memory_level}</span>`;
+    }else{
+      el.innerHTML=`<span class="wrong">✘ 错误 Lv.${res.memory_level}</span>`;
+    }
+  });
+}
+
+// init
+loadNext();
+</script>
+
+</body>
+</html>

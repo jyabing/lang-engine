@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Language Engine</title>
+
+<style>
+body{
+  font-family: Arial;
+  background:#f5f6fa;
+  padding:40px;
+  text-align:center;
+}
+
+.container{
+  max-width:600px;
+  margin:auto;
+}
+
+h1{
+  font-size:32px;
+  margin-bottom:10px;
+}
+
+.subtitle{
+  color:#666;
+  margin-bottom:30px;
+}
+
+.card{
+  background:white;
+  padding:20px;
+  margin:15px 0;
+  border-radius:10px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.08);
+}
+
+button{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  font-size:16px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+.btn-train{ background:#4CAF50;color:white;}
+.btn-dashboard{ background:#2196F3;color:white;}
+.btn-admin{ background:#333;color:white;}
+
+.footer{
+  margin-top:40px;
+  color:#999;
+  font-size:12px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Language Engine</h1>
+<div class="subtitle">语言学习训练系统</div>
+
+<div class="card">
+<h3>开始训练</h3>
+<p>Tell / Cloze / Ask / 听写 / 语音训练</p>
+<a href="/train/"><button class="btn-train">进入训练</button></a>
+</div>
+
+<div class="card">
+<h3>学习数据</h3>
+<p>正确率 / 记忆曲线 / 训练趋势</p>
+<a href="/dashboard/"><button class="btn-dashboard">查看数据</button></a>
+</div>
+
+<div class="card">
+<h3>后台管理</h3>
+<p>句子 / 句型 / 课程 / 用户状态</p>
+<a href="/admin/"><button class="btn-admin">进入后台</button></a>
+</div>
+
+<div class="footer">
+Language Engine v1.0
+</div>
+
+</div>
+
+</body>
+</html>
