@@ -78,9 +78,7 @@ class SentenceItemAdmin(admin.ModelAdmin):
 # =========================
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
-    list_display = ("name",)
-    search_fields = ("name",)
-    filter_horizontal = ("items",)
+    list_display = ('id', 'name')   # 只保留最基础字段
 
 
 # =========================
